@@ -1,0 +1,19 @@
+---
+
+##############################################################################
+##
+## k8s_infrastructure_bootstrap/tasks/main.yml
+##
+## @author: Matthew Cline
+## 
+## Description: Manages the underlying EC2 instances for the k8s cluster.
+##
+###############################################################################
+
+- name: Create or Modify K8S Cluster Instances
+  include_tasks: manage_cluster.yml
+  when: cluster_state != "absent"
+
+- name: Delete Cluster Instances
+  include_tasks: destroy_cluster.yml
+  when: cluster_state == "absent"

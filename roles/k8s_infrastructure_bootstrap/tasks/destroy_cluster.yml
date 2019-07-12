@@ -1,0 +1,57 @@
+---
+
+##############################################################################
+##
+## k8s_infrastructure_teardown/tasks/main.yml
+##
+## @author: Matthew Cline
+## 
+## Description: Destroys the infrastructure that was created when the k8s
+## cluster was deployed. I don't really like having this in two places, but
+## there were some complications with the order of the tasks otherwise.
+##
+###############################################################################
+
+- name: Terminate Master Nodes
+  ec2_instance:
+    detailed_monitoring: yes
+    image_id: "{{master_ami}}"
+    instance_initiated_shutdown_behavior: stop
+    instance_role: "{{master_role}}"
+    instance_type: "{{item.instance_size}}"
+    key_name: "{{master_ssh_key_name}}"
+    name: "{{item.name}}"
+    security_groups: "{{master_sg}}"
+    tags: "{{item.tags}}"
+    vpc_subnet_id: "{{item.subnet_id}}"
+    state: absent
+  register: master_nodes
+  with_items: "{{master_node_config}}"
+
+- name: Terminate Worker Nodes
+  ec2_instance:
+    detailed_monitoring: yes
+    image_id: "{{worker_ami}}"
+    instance_initiated_shutdown_behavior: stop
+    instance_role: "{{worker_role}}"
+    instance_type: "{{item.instance_size}}"
+    key_name: "{{worker_ssh_key_name}}"
+    name: "{{item.name}}"
+    security_groups: "{{worker_sg}}"
+    tags: "{{item.tags}}"
+    vpc_subnet_id: "{{item.subnet_id}}"
+    state: absent
+  register: worker_nodes
+  with_items: "{{worker_node_config}}"
+
+- name: Delete SSH key for master nodes
+  ec2_key:
+    name: "{{master_ssh_key_name}}"
+    state: absent
+  register: master_key_output
+
+- name: Delete SSH key for worker nodes
+  ec2_key:
+    name: "{{worker_ssh_key_name}}"
+    state: absent
+  register: worker_key_output

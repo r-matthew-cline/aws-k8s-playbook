@@ -1,0 +1,94 @@
+---
+
+##############################################################################
+##
+## k8s_infrastructure_bootstrap/tasks/main.yml
+##
+## @author: Matthew Cline
+## 
+## Description: Deploys the specified number of EC2 instances into
+## the specified VPC's private subnets to create a K8S cluster
+##
+###############################################################################
+
+- name: Create SSH key for master nodes
+  ec2_key:
+    name: "{{master_ssh_key_name}}"
+    state: present
+  register: master_key_output
+
+- name: Save SSH key for master
+  copy: 
+    content: "{{master_key_output.key.private_key}}" 
+    dest: "{{ssh_key_dir}}/{{master_ssh_key_name}}"
+    mode: 0600
+    owner: "{{cur_user}}"
+    group: "{{cur_user}}"
+  when: master_key_output.changed
+
+- name: Create SSH key for worker nodes
+  ec2_key:
+    name: "{{worker_ssh_key_name}}"
+    state: present
+  register: worker_key_output
+
+- name: Save SSH key for worker
+  copy: 
+    content: "{{worker_key_output.key.private_key}}" 
+    dest: "{{ssh_key_dir}}/{{worker_ssh_key_name}}"
+    mode: 0600
+    owner: "{{cur_user}}"
+    group: "{{cur_user}}"
+  when: worker_key_output.changed
+
+- name: Deploy Master Nodes
+  ec2_instance:
+    detailed_monitoring: yes
+    image_id: "{{master_ami}}"
+    instance_initiated_shutdown_behavior: stop
+    instance_role: "{{master_role}}"
+    instance_type: "{{item.instance_size}}"
+    key_name: "{{master_ssh_key_name}}"
+    name: "{{item.name}}"
+    security_groups: "{{master_sg}}"
+    tags: "{{item.tags}}"
+    vpc_subnet_id: "{{item.subnet_id}}"
+    state: "{{cluster_state}}"
+  register: master_nodes
+  with_items: "{{master_node_config}}"
+
+- name: Deploy Worker Nodes
+  ec2_instance:
+    detailed_monitoring: yes
+    image_id: "{{worker_ami}}"
+    instance_initiated_shutdown_behavior: stop
+    instance_role: "{{worker_role}}"
+    instance_type: "{{item.instance_size}}"
+    key_name: "{{worker_ssh_key_name}}"
+    name: "{{item.name}}"
+    security_groups: "{{worker_sg}}"
+    tags: "{{item.tags}}"
+    vpc_subnet_id: "{{item.subnet_id}}"
+    state: "{{cluster_state}}"
+  register: worker_nodes
+  with_items: "{{worker_node_config}}"
+
+- name: Add Master Nodes to Hosts
+  add_host:
+    hostname: "{{item.1.private_ip_address}}"
+    group: "masters"
+    ansible_ssh_private_key_file: "{{ssh_key_dir}}/{{master_ssh_key_name}}"
+    ansible_user: ubuntu
+  with_subelements: 
+    - "{{master_nodes.results}}"
+    - instances
+
+- name: Add Worker Nodes to Hosts
+  add_host:
+    hostname: "{{item.1.private_ip_address}}"
+    group: "workers"
+    ansible_ssh_private_key_file: "{{ssh_key_dir}}/{{worker_ssh_key_name}}"
+    ansible_user: ubuntu
+  with_subelements: 
+    - "{{worker_nodes.results}}"
+    - instances

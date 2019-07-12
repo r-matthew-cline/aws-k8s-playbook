@@ -1,0 +1,5 @@
+---
+
+- name: Join Cluster
+  become: yes
+  shell: "{{join_command}} >> /tmp/k8s_node_join.log"

@@ -1,0 +1,39 @@
+---
+
+- name: Install Kubectl
+  become: yes
+  apt:
+    name: kubectl
+    state: present
+
+- name: Initialize the cluster
+  become: yes
+  shell: "kubeadm init --pod-network-cidr={{pod_cidr}} --apiserver-advertise-address={{apiserver_address}} >> /tmp/cluster_initialization.log"
+
+- name: Create .kube directory
+  file:
+    path: "/home/{{kube_user}}/.kube"
+    state: directory
+    mode: 0755
+
+- name: Copy admin.conf to user's kube config
+  become: yes
+  copy:
+    src: /etc/kubernetes/admin.conf
+    dest: $HOME/.kube/config
+    remote_src: yes
+    owner: "{{kube_user}}"
+
+- name: Install Pod Network
+  become: yes
+  become_user: "{{kube_user}}"
+  shell: kubectl apply -f https://raw.githubusercontent.com/coreos/flannel/master/Documentation/kube-flannel.yml >> /tmp/pod_network_setup.log
+
+- name: Get Join Command
+  become: yes
+  shell: kubeadm token create --print-join-command
+  register: join_command_raw
+
+- name: Set Kubeadm Join Command
+  set_fact:
+    join_command: "{{ join_command_raw.stdout_lines[0] }}"

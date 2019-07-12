@@ -1,0 +1,39 @@
+projectname: Admin
+
+cur_user: matthew.cline
+
+cluster_state: present
+
+ssh_key_dir: "/home/{{cur_user}}/.ssh"
+
+master_role: ""
+master_ssh_key_name: "{{projectname}}-k8s-master-key"
+master_ami: ami-b44b2fd5
+master_sg: 
+  - sg-b8dadfdc
+  - sg-0c3c1168
+master_node_config:
+- master1:
+  instance_size: t2.medium
+  name: "{{projectname}}-K8S-Master1"
+  tags:
+    Name: "{{projectname}}-K8S-Master1"
+    Project: "{{projectname}}"
+    AlwaysOn: "False"
+  subnet_id: subnet-8b35ebfd
+
+worker_role: ""
+worker_ssh_key_name: "{{projectname}}-k8s-worker-key"
+worker_ami: ami-b44b2fd5
+worker_sg: 
+  - sg-b8dadfdc
+  - sg-0c3c1168
+worker_node_config:
+- worker1:
+  instance_size: t2.medium
+  name: "{{projectname}}-K8S-Worker1"
+  tags:
+    Name: "{{projectname}}-K8S-Worker1"
+    Project: "{{projectname}}"
+    AlwaysOn: "False"
+  subnet_id: subnet-8b35ebfd

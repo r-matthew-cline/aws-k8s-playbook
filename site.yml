@@ -1,0 +1,40 @@
+- hosts: localhost
+  gather_facts: false
+  vars_files:
+    - project_vars.yml
+
+  tasks:
+    - name: Create Infrastructure
+      include_role:
+        name: k8s_infrastructure_bootstrap
+
+- hosts: all:!localhost
+  gather_facts: false
+
+  tasks:
+    - name: Install Dependencies
+      include_role:
+        name: k8s_dependencies_bootstrap
+      when: cluster_state == "running"
+
+- hosts: masters
+  gather_facts: false
+
+  tasks:
+    - name: Configure Masters
+      include_role:
+        name: k8s_masters_bootstrap
+      vars:
+        pod_cidr: "10.244.0.0/16"
+        apiserver_address: "{{ansible_host}}"
+        kube_user: "ubuntu"
+      when: cluster_state == "running"
+
+- hosts: workers
+  gather_facts: false
+
+  tasks:
+    - name: Join Workers
+      include_role:
+        name: k8s_workers_bootstrap
+      when: cluster_state == "running"
