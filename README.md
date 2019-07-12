@@ -12,47 +12,43 @@ worker nodes in AWS.
 
 ### Running The Playbook
 
-#### Hosts File
+#### Variables
 
-The hosts file is where you will configure the information needed to connect
-to the Kubernetes hosts. The "masters" group should contain you k8s master
-node. The "workers" group should contain all of your worker nodes. The
-"all:vars" block should contain the path to the python executable on all
-of the remote hosts. The variables for the nodes are listed below:
+The variables for the playbook are stored in project_vars.yml. The only
+one that is commonly passed with the playbook command is:
 
-- __name:__ the name of the node. Only used for ansible.
-- __ansible_host:__ the ip address of the node for ssh.
-- __ansible_user:__ the user with sudo priviledges on the remote nodes.
-
-#### User Creation File
-
-You will need to update the SSH key file location in the user_creation.yml
-file. This key will be used for the k8s user that is created on all of the
-nodes.
+- __cluster_state__: this sets the program flow of the playbook, and has the
+following options:
+  - __present__: create the infrastructure, but do not initialize the cluster
+  - __running__: ensure the infrastructure is started and initialize the cluster
+  - __absent__: destroy the infrastructure
 
 #### Main Playbook File
 
-The k8s_bootstrap.yml file is the orchestrator for the playbook. The 
-other yaml files contain the actual tasks that need to be executed.
-When running the playbook you will need to pass in the hosts file using the 
-command below. You will also need to pass the --ask-become-pass flag, 
-so that you can pass the sudo password for all of the other machines. If the
-other nodes have different passwords or use ssh keys, you will have to modify
-the playbook. That functionality is not currently included.
+The main playbook file is site.yml. This file will orchestrate which roles to
+run based on the __cluster_state__ variable.
 
 ```bash
-ansible-playbook -i hosts k8s_bootstrap.yml --ask-become-pass
+ansible-playbook site.yml -e "cluster_state=running"
 ```
 
-This will prompt you for the sudo password of the users on the remote systems.
-Once you enter the password, the playbook will run and configure the cluster.
-After the playbook runs, you can log into the master using the k8s account 
-that is created using the ssh key provided. From there you can verify the 
-cluster is running using the following command.
+This will ensure that the infra exists, is running, and the cluster is
+initialized. Right now the playbook assumes a single master configuration
+with an arbitrary number of worker nodes. Once the playbook finishes, you
+can ssh into the master and run the following command to verify the install.
 
 ```bash
 kubectl get all --namespace=kube-system
 ```
+
+##### Roles
+
+The following roles are included to encapsulate the tasks
+
+- __k8s_infrastructure_bootstrap__: create ec2 instances
+- __k8s_dependencies_bootstrap__: install k8s dependencies on all machines
+- __k8s_masters_bootstrap__: initialize the cluster using kubeadm
+- __k8s_workers_bootstrap__: join the worker nodes to the cluster
 
 ### Credits
 
